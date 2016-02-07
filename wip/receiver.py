@@ -29,7 +29,7 @@ def read_netstring(f):
     length = []
     while len(length) < 7:
         c = f.read(1)
-        if c == ':':
+        if c == b':':
             break
         elif not c.isdigit():
             raise RuntimeError()
@@ -37,12 +37,12 @@ def read_netstring(f):
             length.append(c)
     else:
         raise RuntimeError()
-    length = int(''.join(length))
+    length = int(b''.join(length))
     if length:
         ret = f.read(length)
     else:
-        ret = ''
-    if f.read(1) != ',':
+        ret = b''
+    if f.read(1) != b',':
         raise RuntimeError()
     return ret
 
@@ -50,8 +50,8 @@ def read_netstring(f):
 def read_headers(f):
     with t.SCGI_PARSE():
         whole_header = read_netstring(f)
-        headers = whole_header.split('\0')
-        if headers[-1] != '':
+        headers = whole_header.split(b'\0')
+        if headers[-1] != b'':
             raise RuntimeError()
         return dict(zip(*[iter(headers)] * 2))
 

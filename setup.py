@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
+import os
 
-with open('README.rst') as readme_file:
+
+def next_to_setup(*path):
+    return os.path.join(os.path.dirname(__file__), *path)
+
+with open(next_to_setup('README.rst')) as readme_file:
     readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
+with open(next_to_setup('HISTORY.rst')) as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
-requirements = [
-    # TODO: put package requirements here
-]
+with open(next_to_setup('requirements.txt')) as requirements_file:
+    requirements = requirements_file.read().splitlines()
 
 test_requirements = [
     # TODO: put package test requirements here
@@ -24,9 +28,7 @@ setup(
     author="Mark Williams",
     author_email='markrwilliams@gmail.com',
     url='https://github.com/markrwilliams/wip',
-    packages=[
-        'wip',
-    ],
+    packages=find_packages(),
     package_dir={'wip':
                  'wip'},
     include_package_data=True,
@@ -40,12 +42,9 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
-    test_suite='tests',
-    tests_require=test_requirements
 )

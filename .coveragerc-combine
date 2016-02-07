@@ -1,0 +1,8 @@
+[run]
+branch = True
+
+[paths]
+source =
+   ../wip
+   */lib/python*/site-packages/wip
+   */site-packages/wip

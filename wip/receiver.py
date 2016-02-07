@@ -53,29 +53,42 @@ def read_headers(f):
         headers = whole_header.split(b'\0')
         if headers[-1] != b'':
             raise RuntimeError()
+
+        if six.PY3:
+            # per pep 3333 :(
+            headers = [h.decode('latin-1') for h in headers]
+
         return dict(zip(*[iter(headers)] * 2))
 
 
 class SCGIRequestProcessor(object):
-    def __init__(self, sock):
-        self._sock = sock
-        self._instream = self._sock.makefile('r')
-        self._outstream = self._sock.makefile('w')
+
+    @classmethod
+    def from_sock(cls, sock):
+        instream = sock.makefile('r')
+        outstream = sock.makefile('w')
+        return cls(instream, outstream)
+
+    def __init__(self, instream, outstream):
+        self._instream = instream
+        self._outstream = outstream
         self._headers = None
         self._headers_sent = False
 
-    def _determine_environment(self):
-        environ = read_headers(self._instream)
+    def _determine_environment(self,
+                               _read_headers=read_headers,
+                               _io_factory=io.BytesIO):
+        environ = _read_headers(self._instream)
 
         environ['wsgi.version'] = 1, 0
         environ['wsgi.url_scheme'] = 'http'
         if environ.get('HTTPS') in ('on', '1'):
             environ['wsgi.url_scheme'] = 'https'
-        content_length = environ['CONTENT_LENGTH']
+        content_length = int(environ['CONTENT_LENGTH'])
         if content_length:
             environ['wsgi.input'] = self._instream
         else:
-            environ['wsgi.input'] = io.BytesIO()
+            environ['wsgi.input'] = _io_factory()
         environ['wsgi.errors'] = sys.stderr
         environ['wsgi.multithread'] = False
         environ['wsgi.multiprocess'] = True
@@ -160,7 +173,7 @@ class SocketPassProcessor(object):
         t.SCGI_ACCEPTED().write()
         new_sock.setblocking(True)
         with t.SCGI_REQUEST(), socket_shutdown(new_sock):
-            SCGIRequestProcessor(new_sock).run_app(app)
+            SCGIRequestProcessor.from_sock(new_sock).run_app(app)
 
 
 def cinje_app(environ, start_response):

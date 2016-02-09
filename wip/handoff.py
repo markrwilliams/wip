@@ -3,12 +3,9 @@ import struct
 import sys
 
 from twisted.internet import defer, endpoints, protocol, task
-from twisted.protocols.basic import LineOnlyReceiver
 from twisted import logger
 
-
-def pack_socket_data(s):
-    return struct.pack('iii', s.family, s.type, s.proto)
+from wip.common import describe_socket, READY_BYTE
 
 
 class AlwaysAbortFactory(protocol.Factory):
@@ -19,14 +16,13 @@ class AlwaysAbortFactory(protocol.Factory):
         return None
 
 
-class HandoffProtocol(LineOnlyReceiver):
-    delimiter = '\n'
+class HandoffProtocol(protocol.Protocol):
     done = False
 
-    def lineReceived(self, line):
-        if self.done:
+    def dataReceived(self, datum):
+        if self.done or datum != READY_BYTE:
             return
-        self.sendLine(self.factory.handoff_data)
+        self.transport.write(self.factory.handoff_data)
         self.transport.sendFileDescriptor(self.factory.handoff_fd)
         self.transport.loseConnection()
         self.done = True
@@ -41,7 +37,7 @@ def main(reactor, server_endpoint_string, handoff_endpoint_string):
     server_port = yield server_endpoint.listen(AlwaysAbortFactory())
     handoff_factory = protocol.Factory.forProtocol(HandoffProtocol)
     handoff_factory.handoff_fd = os.dup(server_port.fileno())
-    handoff_factory.handoff_data = pack_socket_data(server_port.socket)
+    handoff_factory.handoff_data = describe_socket(server_port.socket)
     reactor.removeReader(server_port)
 
     handoff_endpoint = endpoints.serverFromString(

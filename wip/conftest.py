@@ -5,6 +5,12 @@ from eliot import MemoryLogger, _output
 from eliot.testing import UnflushedTracebacks
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        '--runfunctional', action='store_true',
+        help='run functional tests')
+
+
 @pytest.fixture
 def validate_logging():
     @contextmanager

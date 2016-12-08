@@ -179,17 +179,10 @@ class SocketPassProcessor(object):
             SCGIRequestProcessor.from_sock(new_sock).run_app(app)
 
 
-def cinje_app(environ, start_response):
-    from cinje import stream
-    from cinje.benchmark import bigtable_stream
-    start_response('200 OK', [])
-    return stream(bigtable_stream(), encoding='utf8')
-
-
-def get_pyramid_app():
-    from pyramid.paster import bootstrap
-    env = bootstrap(sys.argv[2])
-    return env['app']
+def test_app(environ, start_response):
+    start_response('200 OK', [('Content-Type', 'text-plain')])
+    if False:
+        yield
 
 
 def main():
@@ -204,8 +197,9 @@ def main():
             if e.args[0] != errno.EINVAL:
                 raise
 
+    from paste import lint
     proc = SocketPassProcessor.from_path(sys.argv[1])
-    app = cinje_app
+    app = lint.middleware(test_app)
     while True:
         proc.handle_request(app)
 

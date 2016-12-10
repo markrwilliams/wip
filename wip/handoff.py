@@ -1,5 +1,4 @@
 import os
-import struct
 import sys
 
 from twisted.internet import defer, endpoints, protocol, task

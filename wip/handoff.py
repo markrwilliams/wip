@@ -1,8 +1,9 @@
-import os
 import sys
 
 from twisted.internet import defer, endpoints, protocol, task
+from twisted.internet.main import CONNECTION_LOST
 from twisted import logger
+
 
 from wip.common import describe_socket, READY_BYTE
 
@@ -21,10 +22,24 @@ class HandoffProtocol(protocol.Protocol):
     def dataReceived(self, datum):
         if self.done or datum != READY_BYTE:
             return
-        self.transport.write(self.factory.handoff_data)
-        self.transport.sendFileDescriptor(self.factory.handoff_fd)
+        self.transport.write(self.factory.handoff_port_description)
+        self.transport.sendFileDescriptor(self.factory.handoff_port.fileno())
         self.transport.loseConnection()
         self.done = True
+
+
+class HandoffFactory(protocol.Factory):
+    protocol = HandoffProtocol
+    log = logger.Logger()
+
+    def __init__(self, handoff_port, handoff_port_description):
+        self.handoff_port = handoff_port
+        self.handoff_port_description = handoff_port_description
+
+    def doStop(self):
+        self.log.info("Stopping server port {handoff_port!r}",
+                      handoff_port=self.handoff_port)
+        self.handoff_port.connectionLost(CONNECTION_LOST)
 
 
 @defer.inlineCallbacks
@@ -34,9 +49,8 @@ def main(reactor, server_endpoint_string, handoff_endpoint_string):
     server_endpoint = endpoints.serverFromString(
         reactor, server_endpoint_string)
     server_port = yield server_endpoint.listen(AlwaysAbortFactory())
-    handoff_factory = protocol.Factory.forProtocol(HandoffProtocol)
-    handoff_factory.handoff_fd = os.dup(server_port.fileno())
-    handoff_factory.handoff_data = describe_socket(server_port.socket)
+    handoff_factory = HandoffFactory(server_port,
+                                     describe_socket(server_port.socket))
     reactor.removeReader(server_port)
 
     handoff_endpoint = endpoints.serverFromString(
